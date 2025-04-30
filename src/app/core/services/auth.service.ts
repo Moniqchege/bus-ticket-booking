@@ -1,22 +1,47 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
 import { User } from '../models/user.model';
+import { Observable, of, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://projectapi.gerasim.in/api/BusBooking';
 
-  constructor(private http: HttpClient) {}
+  constructor() {}
 
   register(user: User): Observable<any> {
-    return this.http.post(`${this.apiUrl}/AddNewUser`, user);
+    const users = this.getAllUsers();
+    const userExists = users.some(u => u.userName === user.userName || u.emailId === user.emailId);
+
+    if (userExists) {
+      return throwError(() => new Error('User already exists'));
+    }
+
+    users.push(user);
+    localStorage.setItem('users', JSON.stringify(users));
+    return of({ message: 'User registered successfully' });
   }
 
   login(credentials: { userName: string; password: string }): Observable<User> {
-    return this.http.post<User>(`${this.apiUrl}/Authenticate`, credentials);
+    const users = this.getAllUsers();
+    const found = users.find(
+      u => u.userName === credentials.userName && u.password === credentials.password
+    );
+
+    if (!found) {
+      return throwError(() => new Error('Invalid credentials'));
+    }
+
+    // Mock JWT token
+    found.refreshToken = 'mock-jwt-token';
+    found.refreshTokenExpiryTime = new Date(Date.now() + 3600 * 1000).toISOString();
+
+    return of(found);
+  }
+
+  getAllUsers(): User[] {
+    const users = localStorage.getItem('users');
+    return users ? JSON.parse(users) : [];
   }
 
   isLoggedIn(): boolean {
@@ -24,8 +49,10 @@ export class AuthService {
   }
 
   logout() {
-    localStorage.clear();
-    sessionStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
   }
 
   getToken(): string | null {

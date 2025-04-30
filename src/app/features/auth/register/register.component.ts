@@ -1,60 +1,80 @@
-import { Component } from '@angular/core';
-import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
-import { User } from '../../../core/models/user.model'; // Adjust path as needed
 
 @Component({
-  standalone: true,
   selector: 'app-register',
+  standalone: true,
+  imports: [FormsModule, CommonModule],
   templateUrl: './register.component.html',
-  styleUrls: ['./register.component.css'],
-  imports: [CommonModule, ReactiveFormsModule]
+  styleUrl: './register.component.css'
 })
 export class RegisterComponent {
-  registerForm: any;
+  signupObj: any = {
+    firstName: '',
+    lastName: '',
+    EmailId: '',
+    password: '',
+    confirmPassword: ''
+  };
 
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router
-  ) {
-    this.registerForm = this.fb.group({
-      userName: ['', Validators.required],
-      fullName: ['', Validators.required],
-      emailId: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required],
-      role: ['User'],
-      projectName: ['BusBooking']
-    });
-  }
+  showPassword: boolean = false;
+  showConfirmPassword: boolean = false;
 
-  onSubmit() {
-    if (this.registerForm.invalid) return;
+  router = inject(Router);
 
-    const now = new Date().toISOString();
-    const formValues = this.registerForm.value;
+  onSignup() {
+    if (this.signupObj.password !== this.signupObj.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
 
-    const formData: User = {
-      userId: 0,
-      userName: formValues.userName || '',
-      emailId: formValues.emailId || '',
-      fullName: formValues.fullName || '',
-      password: formValues.password || '',
-      role: formValues.role || 'User',
-      projectName: formValues.projectName || 'BusBooking',
-      createdDate: now,
-      refreshToken: '',
-      refreshTokenExpiryTime: now
+    const adminEmail = 'admin1@gmail.com';
+    const adminPassword = 'PassworD';
+
+    const fakeTaskListId = this.generateUUID(); 
+    const fakeUserId = this.generateUUID();     
+
+    const userRole = (
+      this.signupObj.EmailId === adminEmail && 
+      this.signupObj.password === adminPassword) ? 'Admin' : 'User';
+
+    const newUser = {
+      userId: fakeUserId,
+      firstName: this.signupObj.firstName,
+      lastName: this.signupObj.lastName,
+      email: this.signupObj.EmailId,
+      password: this.signupObj.password,
+      role: userRole,
+      taskListId: fakeTaskListId   
     };
 
-    this.authService.register(formData).subscribe({
-      next: () => {
-        alert('Registration successful!');
-        this.router.navigate(['/login']);
-      },
-      error: (err) => alert('Error: ' + err.message)
+    let users = JSON.parse(localStorage.getItem('users') || '[]');
+    users.push(newUser);
+    localStorage.setItem('users', JSON.stringify(users));
+
+    alert('Signup successful');
+    this.router.navigateByUrl('signin');
+  }
+
+  goToSignin() {
+    this.router.navigate(['/signin']);
+  }
+
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
+
+  toggleConfirmPassword() {
+    this.showConfirmPassword = !this.showConfirmPassword;
+  }
+
+  generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0,
+        v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
     });
   }
 }
